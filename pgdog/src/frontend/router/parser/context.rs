@@ -108,6 +108,27 @@ impl<'a> QueryParserContext<'a> {
             || (self.prefer_primary && role != Some(Role::Replica))
     }
 
+    /// Did the client explicitly ask for a replica?
+    ///
+    /// Same precedence as the router: the `pgdog.role` startup parameter wins,
+    /// then a `pgdog_role` query comment, then `SET pgdog.role`.
+    pub(super) fn replica_requested(&self) -> bool {
+        let role = self
+            .router_context
+            .sticky
+            .role
+            .or_else(|| self.router_context.ast.and_then(|ast| ast.comment_role))
+            .or_else(|| self.router_context.parameter_hints.role());
+
+        role == Some(Role::Replica)
+    }
+
+    /// `prefer_primary` is on and the client didn't opt into a replica,
+    /// so every statement must go to the primary.
+    pub(super) fn force_primary(&self) -> bool {
+        self.prefer_primary && !self.read_only && !self.replica_requested()
+    }
+
     /// Are we using the conservative read/write separation strategy?
     pub(super) fn rw_conservative(&self) -> bool {
         self.rw_strategy == &ReadWriteStrategy::Conservative

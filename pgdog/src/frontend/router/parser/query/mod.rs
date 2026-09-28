@@ -158,6 +158,20 @@ impl QueryParser {
             _ => (),
         }
 
+        // `prefer_primary`: the primary serves every statement unless the client opted
+        // into a replica. Several statements (empty query, `PREPARE ... AS SELECT`,
+        // `COPY ... TO`, `BEGIN READ ONLY`) are routed as reads without consulting
+        // `write_override`. In session mode, the first statement's route pins the whole
+        // session, so one of those would send all subsequent writes to a replica.
+        // Commands without their own route already default to the primary.
+        if context.force_primary()
+            && let Command::Query(route)
+            | Command::Set { route, .. }
+            | Command::StartTransaction { route, .. } = &mut command
+        {
+            route.set_read(false);
+        }
+
         if let Command::Query(_) = command
             && context.router_context.cluster.cross_shard_disabled()
             && context.shards_calculator.shard().is_all()

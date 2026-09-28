@@ -108,7 +108,18 @@ impl ParameterHints<'_> {
 
     /// Compute role from parameter value.
     pub(crate) fn compute_role(&self) -> Option<Role> {
-        let role = match self.pgdog_role {
+        let role = self.role();
+
+        if let Some(role) = &role {
+            self.hooks.record_set_role(role);
+        }
+
+        role
+    }
+
+    /// Role requested via `pgdog.role`, without recording it.
+    pub(crate) fn role(&self) -> Option<Role> {
+        match self.pgdog_role {
             Some(ParameterValue::String(val)) => match val.as_str() {
                 "replica" => Some(Role::Replica),
                 "primary" => Some(Role::Primary),
@@ -116,13 +127,7 @@ impl ParameterHints<'_> {
             },
 
             _ => None,
-        };
-
-        if let Some(role) = &role {
-            self.hooks.record_set_role(role);
         }
-
-        role
     }
 }
 

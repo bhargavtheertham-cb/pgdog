@@ -144,6 +144,12 @@ impl QueryParserTest {
         self
     }
 
+    /// Set the sticky role, i.e. `pgdog.role` passed as a startup parameter.
+    pub(crate) fn with_sticky_role(mut self, role: pgdog_config::Role) -> Self {
+        self.sticky.role = Some(role);
+        self
+    }
+
     /// Enable expanded explain for this test.
     pub(crate) fn with_expanded_explain(mut self) -> Self {
         let mut updated = config().deref().clone();
